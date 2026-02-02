@@ -45,7 +45,7 @@ ollama pull llama3.2       # Best quality (~4GB)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Clone and build
-git clone https://github.com/paulwade/cosmic-applet-ollama.git
+git clone https://github.com/paul-wade/cosmic-applet-ollama.git
 cd cosmic-applet-ollama
 cargo build --release
 
