@@ -35,7 +35,6 @@ pub struct AppModel {
     waiting: bool,
 }
 
-
 /// Application messages for state updates.
 #[derive(Debug, Clone)]
 pub enum Message {

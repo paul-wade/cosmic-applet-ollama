@@ -2,7 +2,7 @@
 
 //! Application configuration stored via cosmic-config.
 
-use cosmic::cosmic_config::{self, cosmic_config_derive::CosmicConfigEntry, CosmicConfigEntry};
+use cosmic::cosmic_config::{self, CosmicConfigEntry, cosmic_config_derive::CosmicConfigEntry};
 
 pub const DEFAULT_OLLAMA_URL: &str = "http://localhost:11434/api/chat";
 pub const DEFAULT_MODEL: &str = "llama3.2:3b";
