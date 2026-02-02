@@ -55,11 +55,15 @@ pub enum Message {
 
 /// Send a message to Ollama with system context.
 async fn send_to_ollama(
+    url: String,
+    model: String,
     messages: Vec<(String, String)>,
     context: Context,
 ) -> Result<String, String> {
     let system_prompt = context.format(ollama::DEFAULT_SYSTEM_PROMPT);
-    OllamaClient::default().chat(system_prompt, messages).await
+    OllamaClient::new(url, model)
+        .chat(system_prompt, messages)
+        .await
 }
 
 impl cosmic::Application for AppModel {
@@ -214,11 +218,13 @@ impl AppModel {
         self.input_text.clear();
         self.waiting = true;
 
+        let url = self.config.ollama_url.clone();
+        let model = self.config.model.clone();
         let messages = self.messages.clone();
         let context = Context::gather();
 
         Task::perform(
-            async move { send_to_ollama(messages, context).await },
+            async move { send_to_ollama(url, model, messages, context).await },
             |result| cosmic::Action::App(Message::OllamaResult(result)),
         )
     }

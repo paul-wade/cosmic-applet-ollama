@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxkbcommon-dev \
+            libwayland-dev \
+            libinput-dev \
+            libudev-dev \
+            libseat-dev \
+            libpulse-dev \
+            libdbus-1-dev \
+            libssl-dev \
+            pkg-config
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Package
+        run: |
+          mkdir -p release
+          cp target/release/cosmic-applet-ollama release/
+          cp resources/app.desktop release/com.github.paul-wade.cosmic-applet-ollama.desktop
+          cp resources/icon.svg release/
+          cp README.md release/
+          tar -czvf cosmic-applet-ollama-${{ github.ref_name }}-x86_64-linux.tar.gz -C release .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: cosmic-applet-ollama-${{ github.ref_name }}-x86_64-linux.tar.gz
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -2,6 +2,7 @@
 
 A panel applet for the [COSMIC](https://github.com/pop-os/cosmic-epoch) desktop that provides quick access to local AI assistance via [Ollama](https://ollama.com/).
 
+[![CI](https://github.com/paul-wade/cosmic-applet-ollama/actions/workflows/ci.yml/badge.svg)](https://github.com/paul-wade/cosmic-applet-ollama/actions/workflows/ci.yml)
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)
 
 ## Features
@@ -71,13 +72,22 @@ sudo install -Dm0644 resources/app.desktop /usr/share/applications/com.github.pa
 
 ## Configuration
 
-The default model is `phi3:mini`. To change it, edit `src/ollama.rs`:
+Settings are stored via `cosmic-config` at `~/.config/cosmic/com.github.paulwade.cosmic-applet-ollama/v1/`.
 
-```rust
-pub const DEFAULT_MODEL: &str = "llama3.2:3b";
+To change the model or Ollama URL, edit the config file:
+
+```bash
+# View current config
+cat ~/.config/cosmic/com.github.paulwade.cosmic-applet-ollama/v1/model
+cat ~/.config/cosmic/com.github.paulwade.cosmic-applet-ollama/v1/ollama_url
+
+# Change model (no rebuild needed)
+echo '"mistral:7b"' > ~/.config/cosmic/com.github.paulwade.cosmic-applet-ollama/v1/model
 ```
 
-Then rebuild and reinstall.
+Default values:
+- **model**: `llama3.2:3b`
+- **ollama_url**: `http://localhost:11434/api/chat`
 
 ## Project Structure
 

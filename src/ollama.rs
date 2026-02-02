@@ -4,13 +4,8 @@
 //!
 //! Handles communication with the local Ollama server.
 
+use crate::config;
 use serde::{Deserialize, Serialize};
-
-/// Default Ollama API endpoint.
-pub const DEFAULT_URL: &str = "http://localhost:11434/api/chat";
-
-/// Default model to use for chat completions.
-pub const DEFAULT_MODEL: &str = "llama3.2:3b";
 
 /// Default system prompt for the assistant.
 pub const DEFAULT_SYSTEM_PROMPT: &str = "\
@@ -73,7 +68,7 @@ pub struct Client {
 
 impl Default for Client {
     fn default() -> Self {
-        Self::new(DEFAULT_URL, DEFAULT_MODEL)
+        Self::new(config::DEFAULT_OLLAMA_URL, config::DEFAULT_MODEL)
     }
 }
 
