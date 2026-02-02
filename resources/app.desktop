@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Ollama Chat
+Comment=Quick chat with Ollama
+Type=Application
+Icon=com.github.paulwade.cosmic-applet-ollama
+Exec=cosmic-applet-ollama
+Terminal=false
+StartupNotify=true
+Categories=COSMIC
+Keywords=COSMIC;ollama;chat;ai
+NoDisplay=true
+X-CosmicApplet=true
+X-CosmicHoverPopup=Auto
