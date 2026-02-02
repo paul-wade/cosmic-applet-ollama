@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub const DEFAULT_URL: &str = "http://localhost:11434/api/chat";
 
 /// Default model to use for chat completions.
-pub const DEFAULT_MODEL: &str = "phi3:mini";
+pub const DEFAULT_MODEL: &str = "llama3.2:3b";
 
 /// Default system prompt for the assistant.
 pub const DEFAULT_SYSTEM_PROMPT: &str = "\
