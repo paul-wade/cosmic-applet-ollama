@@ -1,13 +1,13 @@
 [Desktop Entry]
-Name=Ollama Chat
-Comment=Quick chat with Ollama
+Name=Ollama Assistant
+Comment=Local AI assistant for COSMIC desktop
 Type=Application
-Icon=com.github.paulwade.cosmic-applet-ollama
+Icon=com.github.paul_wade.cosmic-applet-ollama
 Exec=cosmic-applet-ollama
 Terminal=false
 StartupNotify=true
-Categories=COSMIC
-Keywords=COSMIC;ollama;chat;ai
+Categories=Utility;
+Keywords=COSMIC;ollama;chat;ai;assistant;
 NoDisplay=true
 X-CosmicApplet=true
 X-CosmicHoverPopup=Auto

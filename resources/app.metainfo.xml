@@ -1,20 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>{{ appid }}</id>
+  <id>com.github.paul_wade.cosmic-applet-ollama</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>{{ license }}</project_license>
-  <name>{{ project-name | title_case }}</name>
-  <summary>{{ description }}</summary>
-  <icon type="remote" width="64" height="64" scale="1">
-    {{ repository-url }}/raw/main/resources/icons/hicolor/scalable/apps/icon.svg
-  </icon>
-  <url type="vcs-browser">{{ repository-url }}</url>
-  <launchable type="desktop-id">{{ appid }}.desktop</launchable>
+  <project_license>GPL-3.0-only</project_license>
+  <name>COSMIC Ollama Applet</name>
+  <summary>Local AI assistant for the COSMIC desktop</summary>
+  <description>
+    <p>
+      A panel applet that provides quick access to local AI assistance via Ollama.
+      Chat with AI models directly from your COSMIC panel with automatic context
+      gathering from clipboard, selected text, system info, and recent errors.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Chat with local Ollama models</li>
+      <li>Automatic clipboard and selection context</li>
+      <li>System information awareness</li>
+      <li>Recent error log context for troubleshooting</li>
+      <li>Pre-configured as a Pop!_OS/Linux assistant</li>
+    </ul>
+  </description>
+  <icon type="stock">com.github.paul_wade.cosmic-applet-ollama</icon>
+  <url type="homepage">https://github.com/paul-wade/cosmic-applet-ollama</url>
+  <url type="bugtracker">https://github.com/paul-wade/cosmic-applet-ollama/issues</url>
+  <url type="vcs-browser">https://github.com/paul-wade/cosmic-applet-ollama</url>
+  <launchable type="desktop-id">com.github.paul_wade.cosmic-applet-ollama.desktop</launchable>
   <provides>
-    <id>{{ appid }}</id>
-    <binaries>
-      <binary>{{ project-name }}</binary>
-    </binaries>
+    <id>com.github.paul_wade.cosmic-applet-ollama</id>
+    <binary>cosmic-applet-ollama</binary>
   </provides>
   <requires>
     <display_length compare="ge">360</display_length>
@@ -25,11 +38,29 @@
     <control>touch</control>
   </supports>
   <categories>
-    <category>COSMIC</category>
+    <category>Utility</category>
   </categories>
   <keywords>
     <keyword>COSMIC</keyword>
+    <keyword>AI</keyword>
+    <keyword>Ollama</keyword>
+    <keyword>assistant</keyword>
+    <keyword>LLM</keyword>
   </keywords>
   <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.1.0" date="2026-02-02">
+      <description>
+        <p>Initial release</p>
+        <ul>
+          <li>Chat with local Ollama models</li>
+          <li>Automatic context gathering</li>
+          <li>Configurable model and URL</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  <developer id="com.github.paul_wade">
+    <name>Paul Wade</name>
+  </developer>
 </component>
-

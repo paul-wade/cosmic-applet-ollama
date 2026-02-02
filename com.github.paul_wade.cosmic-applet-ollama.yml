@@ -1,0 +1,52 @@
+app-id: com.github.paul_wade.cosmic-applet-ollama
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: cosmic-applet-ollama
+
+finish-args:
+  # Wayland access for COSMIC panel integration
+  - --socket=wayland
+  # Network access for Ollama API
+  - --share=network
+  # D-Bus access for COSMIC integration
+  - --socket=session-bus
+  # Access to clipboard via wl-paste
+  - --filesystem=xdg-run/wayland-0
+  # Read system info for context
+  - --filesystem=/etc/os-release:ro
+  - --filesystem=/proc:ro
+  # COSMIC config
+  - --filesystem=~/.config/cosmic:rw
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/cosmic-applet-ollama/cargo
+    RUST_BACKTRACE: '1'
+
+modules:
+  - name: wl-clipboard
+    buildsystem: meson
+    sources:
+      - type: archive
+        url: https://github.com/bugaevc/wl-clipboard/archive/refs/tags/v2.2.1.tar.gz
+        sha256: 6eb8081207fb5581d1d82c4bcd9587205571f39a4d1a5a029d5e6a6e1068e4b0
+
+  - name: cosmic-applet-ollama
+    buildsystem: simple
+    build-commands:
+      - cargo --offline fetch --manifest-path Cargo.toml --verbose
+      - cargo --offline build --release --verbose
+      - install -Dm755 target/release/cosmic-applet-ollama /app/bin/cosmic-applet-ollama
+      - install -Dm644 resources/app.desktop /app/share/applications/${FLATPAK_ID}.desktop
+      - install -Dm644 resources/icon.svg /app/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg
+      - install -Dm644 resources/app.metainfo.xml /app/share/metainfo/${FLATPAK_ID}.metainfo.xml
+    sources:
+      - type: git
+        url: https://github.com/paul-wade/cosmic-applet-ollama.git
+        tag: v0.1.0
+      # Cargo sources generated with flatpak-cargo-generator
+      - cargo-sources.json

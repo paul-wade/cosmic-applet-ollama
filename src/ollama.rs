@@ -29,20 +29,6 @@ impl Message {
             content: content.into(),
         }
     }
-
-    pub fn user(content: impl Into<String>) -> Self {
-        Self {
-            role: "user".to_string(),
-            content: content.into(),
-        }
-    }
-
-    pub fn assistant(content: impl Into<String>) -> Self {
-        Self {
-            role: "assistant".to_string(),
-            content: content.into(),
-        }
-    }
 }
 
 /// Request payload for Ollama chat API.
