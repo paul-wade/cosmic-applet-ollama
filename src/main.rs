@@ -5,6 +5,7 @@ mod config;
 mod context;
 mod i18n;
 mod ollama;
+mod web;
 
 fn main() -> cosmic::iced::Result {
     let requested_languages = i18n_embed::DesktopLanguageRequester::requested_languages();

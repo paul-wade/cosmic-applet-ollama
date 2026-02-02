@@ -10,16 +10,15 @@ use crate::config::Config;
 use crate::context::Context;
 use crate::ollama::{self, Client as OllamaClient};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
-use cosmic::iced::{Length, Limits, Subscription, window::Id};
+use cosmic::iced::{Alignment, Length, Limits, Subscription, window::Id};
 use cosmic::iced_winit::commands::popup::{destroy_popup, get_popup};
 use cosmic::prelude::*;
-use cosmic::widget;
+use cosmic::{theme, widget};
 
 /// Application identifier for COSMIC/freedesktop.
 pub const APP_ID: &str = "com.github.paulwade.cosmic-applet-ollama";
 
 /// The main application state.
-#[derive(Default)]
 pub struct AppModel {
     /// COSMIC application core.
     core: cosmic::Core,
@@ -33,6 +32,19 @@ pub struct AppModel {
     messages: Vec<(String, String)>,
     /// Whether we're waiting for an AI response.
     waiting: bool,
+}
+
+impl Default for AppModel {
+    fn default() -> Self {
+        Self {
+            core: cosmic::Core::default(),
+            popup: None,
+            config: Config::default(),
+            input_text: String::new(),
+            messages: Vec::new(),
+            waiting: false,
+        }
+    }
 }
 
 /// Application messages for state updates.
@@ -50,15 +62,19 @@ pub enum Message {
     Submit,
     /// Received response from Ollama.
     OllamaResult(Result<String, String>),
+    /// Clear chat history.
+    ClearChat,
 }
 
-/// Send a message to Ollama with system context.
+/// Send a message to Ollama with system context and optional web search.
 async fn send_to_ollama(
     url: String,
     model: String,
     messages: Vec<(String, String)>,
-    context: Context,
+    query: String,
 ) -> Result<String, String> {
+    // Gather context with web search if query suggests it
+    let context = Context::gather_with_search(&query).await;
     let system_prompt = context.format(ollama::DEFAULT_SYSTEM_PROMPT);
     OllamaClient::new(url, model)
         .chat(system_prompt, messages)
@@ -96,8 +112,7 @@ impl cosmic::Application for AppModel {
             config,
             messages: vec![(
                 "assistant".to_string(),
-                "Hi! I'm your Pop!_OS assistant. Copy text to clipboard for context, \
-                 then ask me anything."
+                "Hi! I'm your local AI assistant. Copy text for context, then ask me anything."
                     .to_string(),
             )],
             ..Default::default()
@@ -119,14 +134,18 @@ impl cosmic::Application for AppModel {
     }
 
     fn view_window(&self, _id: Id) -> Element<'_, Self::Message> {
+        let header = self.build_header();
         let chat_content = self.build_chat_content();
         let input_row = self.build_input_row();
 
         let content = widget::column()
-            .spacing(12)
-            .padding(12)
+            .spacing(theme::active().cosmic().spacing.space_xs)
+            .push(header)
+            .push(widget::divider::horizontal::light())
             .push(chat_content)
-            .push(input_row);
+            .push(widget::divider::horizontal::light())
+            .push(input_row)
+            .padding(theme::active().cosmic().spacing.space_s);
 
         self.core.applet.popup_container(content).into()
     }
@@ -159,6 +178,13 @@ impl cosmic::Application for AppModel {
                     self.popup = None;
                 }
             }
+            Message::ClearChat => {
+                self.messages.clear();
+                self.messages.push((
+                    "assistant".to_string(),
+                    "Chat cleared. How can I help?".to_string(),
+                ));
+            }
         }
         Task::none()
     }
@@ -170,20 +196,35 @@ impl cosmic::Application for AppModel {
 
 // Private helper methods
 impl AppModel {
+    fn build_header(&self) -> Element<'_, Message> {
+        let model_label = widget::text::body(&self.config.model).width(Length::Fill);
+
+        let clear_btn = widget::button::icon(widget::icon::from_name("edit-clear-symbolic"))
+            .padding(theme::active().cosmic().spacing.space_xxs)
+            .on_press(Message::ClearChat);
+
+        widget::row()
+            .align_y(Alignment::Center)
+            .spacing(theme::active().cosmic().spacing.space_xs)
+            .push(model_label)
+            .push(clear_btn)
+            .into()
+    }
+
     fn build_chat_content(&self) -> Element<'_, Message> {
-        let mut chat_column = widget::column().spacing(8).padding(8);
+        let spacing = theme::active().cosmic().spacing;
+        let mut chat_column = widget::column().spacing(spacing.space_xs);
 
         for (role, content) in &self.messages {
-            let label = if role == "user" {
-                format!("You: {}", content)
-            } else {
-                format!("AI: {}", content)
-            };
-            chat_column = chat_column.push(widget::text(label).width(Length::Fill));
+            let message_widget = self.build_message_bubble(role, content);
+            chat_column = chat_column.push(message_widget);
         }
 
         if self.waiting {
-            chat_column = chat_column.push(widget::text("AI: thinking...").width(Length::Fill));
+            let thinking = widget::container(widget::text::body("Thinking...").width(Length::Fill))
+                .class(theme::Container::Card)
+                .padding(spacing.space_s);
+            chat_column = chat_column.push(thinking);
         }
 
         widget::scrollable(chat_column)
@@ -192,19 +233,53 @@ impl AppModel {
             .into()
     }
 
+    fn build_message_bubble<'a>(&'a self, role: &str, content: &'a str) -> Element<'a, Message> {
+        let spacing = theme::active().cosmic().spacing;
+
+        let (prefix, container_class) = if role == "user" {
+            ("You", theme::Container::Primary)
+        } else {
+            ("AI", theme::Container::Card)
+        };
+
+        let text_content = widget::text(content).width(Length::Fill);
+        let label = widget::text::caption(prefix);
+
+        let bubble_content = widget::column()
+            .spacing(spacing.space_xxs)
+            .push(label)
+            .push(text_content);
+
+        widget::container(bubble_content)
+            .class(container_class)
+            .padding(spacing.space_s)
+            .width(Length::Fill)
+            .into()
+    }
+
     fn build_input_row(&self) -> Element<'_, Message> {
+        let spacing = theme::active().cosmic().spacing;
+
         let input = widget::text_input("Type a message...", &self.input_text)
             .on_input(Message::InputChanged)
             .on_submit(|_| Message::Submit)
             .width(Length::Fill);
 
         let send_btn = if self.waiting {
-            widget::button::standard("...")
+            widget::button::icon(widget::icon::from_name("process-working-symbolic"))
+                .padding(spacing.space_xxs)
         } else {
-            widget::button::standard("Send").on_press(Message::Submit)
+            widget::button::icon(widget::icon::from_name("go-next-symbolic"))
+                .padding(spacing.space_xxs)
+                .on_press(Message::Submit)
         };
 
-        widget::row().spacing(8).push(input).push(send_btn).into()
+        widget::row()
+            .spacing(spacing.space_xs)
+            .align_y(Alignment::Center)
+            .push(input)
+            .push(send_btn)
+            .into()
     }
 
     fn handle_submit(&mut self) -> Task<cosmic::Action<Message>> {
@@ -212,18 +287,17 @@ impl AppModel {
             return Task::none();
         }
 
-        self.messages
-            .push(("user".to_string(), self.input_text.clone()));
+        let query = self.input_text.clone();
+        self.messages.push(("user".to_string(), query.clone()));
         self.input_text.clear();
         self.waiting = true;
 
         let url = self.config.ollama_url.clone();
         let model = self.config.model.clone();
         let messages = self.messages.clone();
-        let context = Context::gather();
 
         Task::perform(
-            async move { send_to_ollama(url, model, messages, context).await },
+            async move { send_to_ollama(url, model, messages, query).await },
             |result| cosmic::Action::App(Message::OllamaResult(result)),
         )
     }

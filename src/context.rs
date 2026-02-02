@@ -13,6 +13,12 @@ const MAX_CONTENT_SIZE: usize = 2000;
 /// Maximum size for journal error output.
 const MAX_ERROR_SIZE: usize = 1500;
 
+/// Keywords that suggest the user wants current/accurate info (triggers web search).
+const SEARCH_KEYWORDS: &[&str] = &[
+    "cosmic", "pop!_os", "pop os", "popos", "system76", "latest", "new", "recent", "current",
+    "2024", "2025", "2026", "how do i", "how to", "what is",
+];
+
 /// Collected system context for AI prompts.
 #[derive(Default, Clone, Debug)]
 pub struct Context {
@@ -24,6 +30,8 @@ pub struct Context {
     pub system_info: Option<String>,
     /// Recent system errors from journalctl
     pub recent_errors: Option<String>,
+    /// Web search results (if applicable)
+    pub web_search: Option<String>,
 }
 
 impl Context {
@@ -37,13 +45,39 @@ impl Context {
             selection,
             system_info: Self::get_system_info(),
             recent_errors: Self::get_recent_errors(),
+            web_search: None,
         }
+    }
+
+    /// Gather context with optional web search based on the query.
+    pub async fn gather_with_search(query: &str) -> Self {
+        let mut ctx = Self::gather();
+
+        // Check if the query suggests we should search
+        if Self::should_search(query) {
+            if let Some(result) = crate::web::search(query).await {
+                ctx.web_search = Some(crate::web::format_results(&result));
+            }
+        }
+
+        ctx
+    }
+
+    /// Check if a query would benefit from web search.
+    fn should_search(query: &str) -> bool {
+        let query_lower = query.to_lowercase();
+        SEARCH_KEYWORDS
+            .iter()
+            .any(|keyword| query_lower.contains(keyword))
     }
 
     /// Build a formatted context string for the AI system prompt.
     pub fn format(&self, base_prompt: &str) -> String {
         let mut parts = vec![base_prompt.to_string()];
 
+        if let Some(ref search) = self.web_search {
+            parts.push(format!("\n\n{}", search));
+        }
         if let Some(ref clip) = self.clipboard {
             parts.push(format!("\n\n## Clipboard:\n```\n{}\n```", clip));
         }
