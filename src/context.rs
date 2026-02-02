@@ -15,8 +15,46 @@ const MAX_ERROR_SIZE: usize = 1500;
 
 /// Keywords that suggest the user wants current/accurate info (triggers web search).
 const SEARCH_KEYWORDS: &[&str] = &[
-    "cosmic", "pop!_os", "pop os", "popos", "system76", "latest", "new", "recent", "current",
-    "2024", "2025", "2026", "how do i", "how to", "what is",
+    // COSMIC/Pop specific
+    "cosmic",
+    "pop!_os",
+    "pop os",
+    "popos",
+    "system76",
+    "libcosmic",
+    "iced",
+    // Time-sensitive
+    "latest",
+    "new",
+    "recent",
+    "current",
+    "update",
+    "2024",
+    "2025",
+    "2026",
+    // Questions that benefit from search
+    "how do i",
+    "how to",
+    "what is",
+    "where is",
+    "why does",
+    "can i",
+    "does",
+    "is there",
+    "install",
+    "configure",
+    "setup",
+    "setting",
+    "config",
+    // Error/troubleshooting
+    "error",
+    "problem",
+    "issue",
+    "fix",
+    "broken",
+    "not working",
+    "failed",
+    "crash",
 ];
 
 /// Collected system context for AI prompts.
