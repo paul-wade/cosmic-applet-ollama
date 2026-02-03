@@ -31,14 +31,20 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install cargo-deb
+        run: cargo install cargo-deb
+
       - name: Build release
         run: cargo build --release
 
-      - name: Package
+      - name: Build .deb package
+        run: cargo deb
+
+      - name: Package tarball
         run: |
           mkdir -p release
           cp target/release/cosmic-applet-ollama release/
-          cp resources/app.desktop release/com.github.paul-wade.cosmic-applet-ollama.desktop
+          cp resources/app.desktop release/com.github.paulwade.cosmic-applet-ollama.desktop
           cp resources/icon.svg release/
           cp README.md release/
           tar -czvf cosmic-applet-ollama-${{ github.ref_name }}-x86_64-linux.tar.gz -C release .
@@ -46,7 +52,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: cosmic-applet-ollama-${{ github.ref_name }}-x86_64-linux.tar.gz
+          files: |
+            cosmic-applet-ollama-${{ github.ref_name }}-x86_64-linux.tar.gz
+            target/debian/*.deb
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

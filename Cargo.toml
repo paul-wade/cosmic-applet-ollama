@@ -30,3 +30,18 @@ features = [
     "wayland",
     "winit",
 ]
+
+[package.metadata.deb]
+maintainer = "Paul Wade <paul@fluentcoding.com>"
+copyright = "2024-2026, Paul Wade"
+license-file = ["LICENSE", "0"]
+extended-description = "A COSMIC desktop panel applet for chatting with local Ollama AI models. Features streaming responses, model selection, chat history persistence, and web search integration."
+section = "utils"
+priority = "optional"
+depends = "$auto"
+assets = [
+    ["target/release/cosmic-applet-ollama", "usr/bin/", "755"],
+    ["resources/app.desktop", "usr/share/applications/com.github.paulwade.cosmic-applet-ollama.desktop", "644"],
+    ["resources/icon.svg", "usr/share/icons/hicolor/scalable/apps/com.github.paulwade.cosmic-applet-ollama.svg", "644"],
+    ["resources/app.metainfo.xml", "usr/share/appdata/com.github.paulwade.cosmic-applet-ollama.metainfo.xml", "644"],
+]
