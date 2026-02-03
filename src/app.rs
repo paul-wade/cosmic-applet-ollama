@@ -8,12 +8,14 @@
 
 use crate::config::Config;
 use crate::context::Context;
-use crate::ollama::{self, Client as OllamaClient};
+use crate::ollama::{self, AvailableModel, Client as OllamaClient, StreamEvent};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::{Alignment, Length, Limits, Subscription, window::Id};
 use cosmic::iced_winit::commands::popup::{destroy_popup, get_popup};
 use cosmic::prelude::*;
 use cosmic::{theme, widget};
+use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc;
 
 /// Application identifier for COSMIC/freedesktop.
 pub const APP_ID: &str = "com.github.paulwade.cosmic-applet-ollama";
@@ -27,12 +29,22 @@ pub struct AppModel {
     popup: Option<Id>,
     /// Application configuration.
     config: Config,
+    /// Config context for saving changes.
+    config_ctx: Option<cosmic_config::Config>,
     /// Current text input value.
     input_text: String,
     /// Chat message history as (role, content) pairs.
     messages: Vec<(String, String)>,
     /// Whether we're waiting for an AI response.
     waiting: bool,
+    /// Receiver for streaming response chunks (wrapped for Clone).
+    stream_rx: Option<Arc<Mutex<mpsc::Receiver<StreamEvent>>>>,
+    /// Available models from Ollama.
+    available_models: Vec<AvailableModel>,
+    /// Model display names for dropdown (cached).
+    model_options: Vec<String>,
+    /// Whether we're loading models.
+    loading_models: bool,
 }
 
 /// Application messages for state updates.
@@ -48,24 +60,38 @@ pub enum Message {
     InputChanged(String),
     /// User submitted a message.
     Submit,
-    /// Received response from Ollama.
-    OllamaResult(Result<String, String>),
+    /// Stream is ready, start receiving chunks.
+    StreamReady(Arc<Mutex<mpsc::Receiver<StreamEvent>>>),
+    /// Received a streaming chunk from Ollama.
+    StreamChunk(String),
+    /// Stream completed.
+    StreamDone,
+    /// Stream error occurred.
+    StreamError(String),
+    /// Poll for next stream chunk.
+    PollStream,
     /// Clear chat history.
     ClearChat,
+    /// Load available models from Ollama.
+    LoadModels,
+    /// Received available models from Ollama.
+    ModelsLoaded(Result<Vec<AvailableModel>, String>),
+    /// User selected a different model.
+    SelectModel(usize),
 }
 
-/// Send a message to Ollama with system context and optional web search.
-async fn send_to_ollama(
+/// Start a streaming chat with Ollama including system context.
+async fn start_ollama_stream(
     url: String,
     model: String,
     messages: Vec<(String, String)>,
     query: String,
-) -> Result<String, String> {
+) -> mpsc::Receiver<StreamEvent> {
     // Gather context with web search if query suggests it
     let context = Context::gather_with_search(&query).await;
     let system_prompt = context.format(ollama::DEFAULT_SYSTEM_PROMPT);
     OllamaClient::new(url, model)
-        .chat(system_prompt, messages)
+        .chat_stream(system_prompt, messages)
         .await
 }
 
@@ -88,16 +114,20 @@ impl cosmic::Application for AppModel {
         core: cosmic::Core,
         _flags: Self::Flags,
     ) -> (Self, Task<cosmic::Action<Self::Message>>) {
-        let config = cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
-            .map(|ctx| match Config::get_entry(&ctx) {
-                Ok(config) => config,
-                Err((_errors, config)) => config,
+        let (config, config_ctx) = cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
+            .map(|ctx| {
+                let config = match Config::get_entry(&ctx) {
+                    Ok(config) => config,
+                    Err((_errors, config)) => config,
+                };
+                (config, Some(ctx))
             })
-            .unwrap_or_default();
+            .unwrap_or_else(|_| (Config::default(), None));
 
         let app = AppModel {
             core,
             config,
+            config_ctx,
             messages: vec![(
                 "assistant".to_string(),
                 "Hi! I'm your local AI assistant. Copy text for context, then ask me anything."
@@ -155,8 +185,40 @@ impl cosmic::Application for AppModel {
             Message::Submit => {
                 return self.handle_submit();
             }
-            Message::OllamaResult(result) => {
-                self.handle_ollama_result(result);
+            Message::StreamReady(rx) => {
+                self.stream_rx = Some(rx);
+                // Add empty assistant message that will be filled incrementally
+                self.messages.push(("assistant".to_string(), String::new()));
+                return Task::done(cosmic::Action::App(Message::PollStream));
+            }
+            Message::StreamChunk(content) => {
+                // Append to the last message (assistant's streaming response)
+                if let Some((role, text)) = self.messages.last_mut()
+                    && role == "assistant"
+                {
+                    text.push_str(&content);
+                }
+                return Task::done(cosmic::Action::App(Message::PollStream));
+            }
+            Message::StreamDone => {
+                self.waiting = false;
+                self.stream_rx = None;
+            }
+            Message::StreamError(err) => {
+                self.waiting = false;
+                self.stream_rx = None;
+                // Update the last message with error or add new one
+                if let Some((role, text)) = self.messages.last_mut() {
+                    if role == "assistant" && text.is_empty() {
+                        *text = format!("Error: {}", err);
+                    } else {
+                        self.messages
+                            .push(("assistant".to_string(), format!("Error: {}", err)));
+                    }
+                }
+            }
+            Message::PollStream => {
+                return self.poll_stream();
             }
             Message::TogglePopup => {
                 return self.handle_toggle_popup();
@@ -173,6 +235,44 @@ impl cosmic::Application for AppModel {
                     "Chat cleared. How can I help?".to_string(),
                 ));
             }
+            Message::LoadModels => {
+                if self.loading_models {
+                    return Task::none();
+                }
+                self.loading_models = true;
+                let url = self.config.ollama_url.clone();
+                return Task::perform(
+                    async move { OllamaClient::list_models(&url).await },
+                    |result| cosmic::Action::App(Message::ModelsLoaded(result)),
+                );
+            }
+            Message::ModelsLoaded(result) => {
+                self.loading_models = false;
+                match result {
+                    Ok(models) => {
+                        // Cache display options for dropdown
+                        self.model_options = models
+                            .iter()
+                            .map(|m| format!("{} ({})", m.name, m.display_size))
+                            .collect();
+                        self.available_models = models;
+                    }
+                    Err(_) => {
+                        // Silently fail - user can still type model name in config
+                        self.available_models.clear();
+                        self.model_options.clear();
+                    }
+                }
+            }
+            Message::SelectModel(index) => {
+                if let Some(model) = self.available_models.get(index) {
+                    self.config.model = model.name.clone();
+                    // Save to config
+                    if let Some(ctx) = &self.config_ctx {
+                        let _ = self.config.write_entry(ctx);
+                    }
+                }
+            }
         }
         Task::none()
     }
@@ -185,16 +285,34 @@ impl cosmic::Application for AppModel {
 // Private helper methods
 impl AppModel {
     fn build_header(&self) -> Element<'_, Message> {
-        let model_label = widget::text::body(&self.config.model).width(Length::Fill);
+        let spacing = theme::active().cosmic().spacing;
+
+        // Build model selector
+        let model_widget: Element<'_, Message> = if self.model_options.is_empty() {
+            // No models loaded yet - show current model as text
+            widget::text::body(&self.config.model)
+                .width(Length::Fill)
+                .into()
+        } else {
+            // Find current model index
+            let selected = self
+                .available_models
+                .iter()
+                .position(|m| m.name == self.config.model);
+
+            widget::dropdown(&self.model_options, selected, Message::SelectModel)
+                .width(Length::Fill)
+                .into()
+        };
 
         let clear_btn = widget::button::icon(widget::icon::from_name("edit-clear-symbolic"))
-            .padding(theme::active().cosmic().spacing.space_xxs)
+            .padding(spacing.space_xxs)
             .on_press(Message::ClearChat);
 
         widget::row()
             .align_y(Alignment::Center)
-            .spacing(theme::active().cosmic().spacing.space_xs)
-            .push(model_label)
+            .spacing(spacing.space_xs)
+            .push(model_widget)
             .push(clear_btn)
             .into()
     }
@@ -208,7 +326,10 @@ impl AppModel {
             chat_column = chat_column.push(message_widget);
         }
 
-        if self.waiting {
+        // Only show "Thinking..." if we're waiting and the stream hasn't started yet
+        // (i.e., the last message is empty or doesn't exist from streaming)
+        let show_thinking = self.waiting && self.stream_rx.is_none();
+        if show_thinking {
             let thinking = widget::container(widget::text::body("Thinking...").width(Length::Fill))
                 .class(theme::Container::Card)
                 .padding(spacing.space_s);
@@ -285,22 +406,41 @@ impl AppModel {
         let messages = self.messages.clone();
 
         Task::perform(
-            async move { send_to_ollama(url, model, messages, query).await },
-            |result| cosmic::Action::App(Message::OllamaResult(result)),
+            async move { start_ollama_stream(url, model, messages, query).await },
+            |rx| cosmic::Action::App(Message::StreamReady(Arc::new(Mutex::new(rx)))),
         )
     }
 
-    fn handle_ollama_result(&mut self, result: Result<String, String>) {
-        self.waiting = false;
-        match result {
-            Ok(content) => {
-                self.messages.push(("assistant".to_string(), content));
-            }
-            Err(err) => {
-                self.messages
-                    .push(("assistant".to_string(), format!("Error: {}", err)));
+    fn poll_stream(&mut self) -> Task<cosmic::Action<Message>> {
+        if let Some(rx_arc) = &self.stream_rx {
+            let mut rx = rx_arc.lock().unwrap();
+            match rx.try_recv() {
+                Ok(event) => {
+                    drop(rx); // Release lock before returning
+                    let msg = match event {
+                        StreamEvent::Chunk(content) => Message::StreamChunk(content),
+                        StreamEvent::Done => Message::StreamDone,
+                        StreamEvent::Error(err) => Message::StreamError(err),
+                    };
+                    return Task::done(cosmic::Action::App(msg));
+                }
+                Err(mpsc::error::TryRecvError::Empty) => {
+                    drop(rx); // Release lock
+                    // No data yet, schedule another poll
+                    return Task::perform(
+                        async { tokio::time::sleep(tokio::time::Duration::from_millis(10)).await },
+                        |_| cosmic::Action::App(Message::PollStream),
+                    );
+                }
+                Err(mpsc::error::TryRecvError::Disconnected) => {
+                    drop(rx); // Release lock
+                    // Channel closed unexpectedly
+                    self.waiting = false;
+                    self.stream_rx = None;
+                }
             }
         }
+        Task::none()
     }
 
     fn handle_toggle_popup(&mut self) -> Task<cosmic::Action<Message>> {
@@ -325,6 +465,9 @@ impl AppModel {
             .min_height(400.0)
             .max_height(600.0);
 
-        get_popup(popup_settings)
+        // Load models when popup opens
+        let popup_task = get_popup(popup_settings);
+        let load_task = Task::done(cosmic::Action::App(Message::LoadModels));
+        Task::batch([popup_task, load_task])
     }
 }

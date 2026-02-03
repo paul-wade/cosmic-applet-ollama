@@ -11,11 +11,11 @@
 - [x] Flatpak manifest
 
 ## Phase 1: Streaming Responses (Priority: HIGH)
-- [ ] Modify `src/ollama.rs` to use `stream: true` in API requests
-- [ ] Parse Server-Sent Events (SSE) from Ollama streaming endpoint
-- [ ] Update `src/app.rs` to handle incremental message updates
-- [ ] Show tokens as they arrive in the UI
-- [ ] Handle stream errors and connection drops gracefully
+- [x] Modify `src/ollama.rs` to use `stream: true` in API requests
+- [x] Parse Server-Sent Events (SSE) from Ollama streaming endpoint
+- [x] Update `src/app.rs` to handle incremental message updates
+- [x] Show tokens as they arrive in the UI
+- [x] Handle stream errors and connection drops gracefully
 
 **Technical Notes:**
 - Ollama streaming returns newline-delimited JSON objects
@@ -23,12 +23,12 @@
 - Final chunk has `"done":true`
 - Use `reqwest` streaming or `futures::Stream`
 
-## Phase 2: Model Selector Dropdown (Priority: MEDIUM)
-- [ ] Add function to query `GET /api/tags` for available models
-- [ ] Create dropdown/menu widget in header area
-- [ ] Display model names with sizes (e.g., "llama3.2:3b (2.0GB)")
-- [ ] Save selected model to cosmic-config on change
-- [ ] Load available models when popup opens
+## Phase 2: Model Selector Dropdown (Priority: MEDIUM) ✓ COMPLETE
+- [x] Add function to query `GET /api/tags` for available models
+- [x] Create dropdown/menu widget in header area
+- [x] Display model names with sizes (e.g., "llama3.2:3b (2.0GB)")
+- [x] Save selected model to cosmic-config on change
+- [x] Load available models when popup opens
 
 **Technical Notes:**
 - API response: `{"models":[{"name":"llama3.2:3b","size":2000000000,...}]}`
