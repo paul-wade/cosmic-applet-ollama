@@ -8,6 +8,7 @@
 
 use crate::config::Config;
 use crate::context::Context;
+use crate::history;
 use crate::ollama::{self, AvailableModel, Client as OllamaClient, StreamEvent};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::{Alignment, Length, Limits, Subscription, window::Id};
@@ -124,15 +125,24 @@ impl cosmic::Application for AppModel {
             })
             .unwrap_or_else(|_| (Config::default(), None));
 
+        // Load chat history from disk
+        let saved_history = history::load_history();
+        let messages = if saved_history.messages.is_empty() {
+            // No saved history - show welcome message
+            vec![(
+                "assistant".to_string(),
+                "Hi! I'm your local AI assistant. Copy text for context, then ask me anything."
+                    .to_string(),
+            )]
+        } else {
+            saved_history.to_messages()
+        };
+
         let app = AppModel {
             core,
             config,
             config_ctx,
-            messages: vec![(
-                "assistant".to_string(),
-                "Hi! I'm your local AI assistant. Copy text for context, then ask me anything."
-                    .to_string(),
-            )],
+            messages,
             ..Default::default()
         };
 
@@ -203,6 +213,8 @@ impl cosmic::Application for AppModel {
             Message::StreamDone => {
                 self.waiting = false;
                 self.stream_rx = None;
+                // Save history after response completes
+                let _ = history::save_history(&self.messages);
             }
             Message::StreamError(err) => {
                 self.waiting = false;
@@ -234,6 +246,8 @@ impl cosmic::Application for AppModel {
                     "assistant".to_string(),
                     "Chat cleared. How can I help?".to_string(),
                 ));
+                // Clear saved history when starting new chat
+                let _ = history::clear_history();
             }
             Message::LoadModels => {
                 if self.loading_models {

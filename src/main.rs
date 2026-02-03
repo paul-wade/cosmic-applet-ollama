@@ -3,6 +3,7 @@
 mod app;
 mod config;
 mod context;
+mod history;
 mod i18n;
 mod ollama;
 mod web;

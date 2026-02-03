@@ -34,16 +34,18 @@
 - API response: `{"models":[{"name":"llama3.2:3b","size":2000000000,...}]}`
 - Use `cosmic::widget::dropdown` or `cosmic::widget::menu`
 
-## Phase 3: Chat History Persistence (Priority: MEDIUM)
-- [ ] Define chat history JSON schema
-- [ ] Save history to `~/.local/share/cosmic-applet-ollama/history.json`
-- [ ] Load history on applet startup
-- [ ] Add "New Chat" button to clear and start fresh
-- [ ] Implement max history limit (e.g., 100 messages)
+## Phase 3: Chat History Persistence (Priority: MEDIUM) ✓ COMPLETE
+- [x] Define chat history JSON schema
+- [x] Save history to `~/.local/share/cosmic-applet-ollama/history.json`
+- [x] Load history on applet startup
+- [x] Add "New Chat" button to clear and start fresh (using existing ClearChat)
+- [x] Implement max history limit (100 messages)
 
 **Technical Notes:**
-- Use XDG directories via `dirs` crate or `std::env`
-- Consider using cosmic-config for persistence instead
+- Implemented in `src/history.rs` module
+- Uses XDG_DATA_HOME or ~/.local/share
+- JSON format with version field for future migrations
+- History automatically trimmed to 100 messages on save
 
 ## Phase 4: Custom Icon (Priority: LOW)
 - [ ] Design SVG icon representing AI/chat
