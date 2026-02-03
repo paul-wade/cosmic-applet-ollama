@@ -92,10 +92,10 @@ impl Context {
         let mut ctx = Self::gather();
 
         // Check if the query suggests we should search
-        if Self::should_search(query) {
-            if let Some(result) = crate::web::search(query).await {
-                ctx.web_search = Some(crate::web::format_results(&result));
-            }
+        if Self::should_search(query)
+            && let Some(result) = crate::web::search(query).await
+        {
+            ctx.web_search = Some(crate::web::format_results(&result));
         }
 
         ctx

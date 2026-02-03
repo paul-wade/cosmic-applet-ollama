@@ -19,6 +19,7 @@ use cosmic::{theme, widget};
 pub const APP_ID: &str = "com.github.paulwade.cosmic-applet-ollama";
 
 /// The main application state.
+#[derive(Default)]
 pub struct AppModel {
     /// COSMIC application core.
     core: cosmic::Core,
@@ -34,18 +35,6 @@ pub struct AppModel {
     waiting: bool,
 }
 
-impl Default for AppModel {
-    fn default() -> Self {
-        Self {
-            core: cosmic::Core::default(),
-            popup: None,
-            config: Config::default(),
-            input_text: String::new(),
-            messages: Vec::new(),
-            waiting: false,
-        }
-    }
-}
 
 /// Application messages for state updates.
 #[derive(Debug, Clone)]
