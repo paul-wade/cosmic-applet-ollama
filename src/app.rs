@@ -156,7 +156,7 @@ impl cosmic::Application for AppModel {
     fn view(&self) -> Element<'_, Self::Message> {
         self.core
             .applet
-            .icon_button("user-available-symbolic")
+            .icon_button(APP_ID)
             .on_press(Message::TogglePopup)
             .into()
     }

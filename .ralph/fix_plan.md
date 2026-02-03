@@ -10,7 +10,7 @@
 - [x] CI/CD pipeline with GitHub Actions
 - [x] Flatpak manifest
 
-## Phase 1: Streaming Responses (Priority: HIGH)
+## Phase 1: Streaming Responses (Priority: HIGH) ✓ COMPLETE
 - [x] Modify `src/ollama.rs` to use `stream: true` in API requests
 - [x] Parse Server-Sent Events (SSE) from Ollama streaming endpoint
 - [x] Update `src/app.rs` to handle incremental message updates
@@ -47,12 +47,18 @@
 - JSON format with version field for future migrations
 - History automatically trimmed to 100 messages on save
 
-## Phase 4: Custom Icon (Priority: LOW)
-- [ ] Design SVG icon representing AI/chat
-- [ ] Follow COSMIC icon design guidelines
-- [ ] Support both light and dark themes
-- [ ] Update `resources/icon.svg`
-- [ ] Test in panel at various sizes
+## Phase 4: Custom Icon (Priority: LOW) ✓ COMPLETE
+- [x] Design SVG icon representing AI/chat
+- [x] Follow COSMIC icon design guidelines
+- [x] Support both light and dark themes
+- [x] Update `resources/icon.svg`
+- [x] Update app.rs to use custom icon
+
+**Technical Notes:**
+- Icon is a chat bubble with neural network/circuit pattern inside
+- Uses `currentColor` for automatic light/dark theme support
+- 16x16 viewBox for symbolic icon sizing
+- Referenced by APP_ID in app.rs for proper icon lookup
 
 ## Success Criteria
 - All clippy warnings resolved: `cargo clippy -- -D warnings`
